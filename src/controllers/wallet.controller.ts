@@ -7,7 +7,7 @@ export const financialStatus = asyncHandler(async (req: Request, res: Response) 
   const force = req.query.force === 'true';
   const wallet: WalletSnapshot = force ? await recomputeWallet(salonId) : await getWallet(salonId);
 
-  const recentPayouts = await import('../models/Payment').then((m) =>
+  const recentPayouts = await import('../models/Payment.js').then((m) =>
     m.Payment.find({ salon: salonId, type: 'barber_payout' }).sort({ createdAt: -1 }).limit(10).populate('barber', 'name').lean(),
   );
 

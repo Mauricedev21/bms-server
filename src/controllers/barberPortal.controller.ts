@@ -45,8 +45,8 @@ export const portalTransactions = asyncHandler(async (req: Request, res: Respons
 
 export const portalLoans = asyncHandler(async (req: Request, res: Response) => {
   const barber = req.barber!;
-  const { Loan } = await import('../models/Loan');
-  const { LoanRepayment } = await import('../models/LoanRepayment');
+  const { Loan } = await import('../models/Loan.js');
+  const { LoanRepayment } = await import('../models/LoanRepayment.js');
   const loans = await Loan.find({ salon: barber.salon, barber: barber._id }).sort({ createdAt: -1 }).lean();
   const repayments = await LoanRepayment.find({ salon: barber.salon, barber: barber._id }).sort({ createdAt: -1 }).lean();
   res.json({ success: true, data: { loans, repayments } });
