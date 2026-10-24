@@ -11,7 +11,8 @@ import barberPortalRoutes from './barberPortal.routes';
 
 const router = Router();
 
-router.get('/health', (_req, res) => res.json({ success: true, data: { status: 'ok', service: 'bms-api', time: new Date().toISOString() } }));
+// NOTE: GET /api/health lives in health.routes.ts and is mounted in app.ts
+// BEFORE the apiLimiter so uptime monitors never get rate-limited.
 
 router.use('/auth', authRoutes);
 router.use('/portal', barberPortalRoutes);

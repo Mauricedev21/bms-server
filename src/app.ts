@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import morgan from 'morgan';
 import routes from './routes';
+import healthRoutes from './routes/health.routes';
 import { notFound } from './middleware/notFound';
 import { errorHandler } from './middleware/errorHandler';
 import { apiLimiter } from './middleware/rateLimiter';
@@ -31,6 +32,10 @@ export function createApp(): express.Express {
   app.use(express.urlencoded({ extended: false }));
 
   if (!isProd) app.use(morgan('dev'));
+
+  // Health probe FIRST, before the rate limiter: uptime monitors and Render's
+  // own checks poll this path on their schedule and must never see a 429.
+  app.use(`${env.API_PREFIX}/health`, healthRoutes);
 
   app.use(env.API_PREFIX, apiLimiter, routes);
 

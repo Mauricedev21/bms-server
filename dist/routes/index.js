@@ -14,7 +14,8 @@ const reports_routes_1 = __importDefault(require("./reports.routes"));
 const admin_routes_1 = __importDefault(require("./admin.routes"));
 const barberPortal_routes_1 = __importDefault(require("./barberPortal.routes"));
 const router = (0, express_1.Router)();
-router.get('/health', (_req, res) => res.json({ success: true, data: { status: 'ok', service: 'bms-api', time: new Date().toISOString() } }));
+// NOTE: GET /api/health lives in health.routes.ts and is mounted in app.ts
+// BEFORE the apiLimiter so uptime monitors never get rate-limited.
 router.use('/auth', auth_routes_1.default);
 router.use('/portal', barberPortal_routes_1.default);
 // userRoutes is mounted at the root (legacy paths used by the e2e script:

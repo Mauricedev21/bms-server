@@ -4,7 +4,7 @@
  * Run with: npm --prefix server run e2e
  *
  * Verifies (among others):
- *  - manager registration → login → salon setup
+ *  - manager registration → admin approval → login → salon setup
  *  - 10,000 RWF ⇒ 6,000 manager/4,000 barber
  *  - 100,000 RWF ⇒ 60,000 manager/40,000 barber
  *  - accumulation of multiple shares
@@ -110,11 +110,9 @@ async function main() {
         passwordConfirmation: 'StrongPass123',
         salonName: 'e2e Beauty Salon',
     });
-    ok('register creates manager + salon', reg.status === 201, reg.json);
-    const mgrToken = reg.json.data.token;
-    const salonId = String(reg.json.data.salon._id);
-    const mgrId = String(reg.json.data.user._id);
-    ok('registration returns token', typeof mgrToken === 'string' && mgrToken.length > 20);
+    ok('register files a pending access request (201, status=pending)', reg.status === 201 && reg.json.data.request?.status === 'pending', reg.json);
+    const mgrId = String(reg.json.data.request._id);
+    ok('register issues no token or salon before approval', !reg.json.data.token && !reg.json.data.salon, reg.json);
     const dupReg = await api('POST', '/auth/register', {
         username,
         fullName: 'X', phone, email, password: 'StrongPass123', passwordConfirmation: 'StrongPass123', salonName: 'Duplicate Salon',
@@ -122,8 +120,16 @@ async function main() {
     ok('duplicate registration rejected', dupReg.status === 409, dupReg.json);
     const wrongLogin = await api('POST', '/auth/login', { identifier: username, password: 'wrongpass' });
     ok('wrong password rejected', wrongLogin.status === 401);
+    const pendingLogin = await api('POST', '/auth/login', { identifier: email, password: 'StrongPass123' });
+    ok('pending user cannot log in before approval', pendingLogin.status === 403, pendingLogin.json);
+    // Manager-approval flow: an admin approves the request → salon created,
+    // account activated → login becomes possible.
+    const approve = await api('POST', `/admin/users/${mgrId}/approve`, undefined, await adminToken(admin));
+    ok('admin approval activates account and creates salon', approve.status === 200 && !!approve.json.data.salon?._id, approve.json);
     const login = await api('POST', '/auth/login', { identifier: email, password: 'StrongPass123' });
-    ok('login works with email', login.status === 200, login.json);
+    ok('login works with email after approval', login.status === 200, login.json);
+    const mgrToken = login.json.data.token;
+    ok('login returns a session token', typeof mgrToken === 'string' && mgrToken.length > 20);
     const me = await api('GET', '/auth/me', undefined, mgrToken);
     ok('me returns user+salon', me.status === 200 && !!me.json.data.salon, me.json);
     const iso = await api('POST', '/transactions', {

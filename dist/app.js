@@ -9,6 +9,7 @@ const helmet_1 = __importDefault(require("helmet"));
 const cors_1 = __importDefault(require("cors"));
 const morgan_1 = __importDefault(require("morgan"));
 const routes_1 = __importDefault(require("./routes"));
+const health_routes_1 = __importDefault(require("./routes/health.routes"));
 const notFound_1 = require("./middleware/notFound");
 const errorHandler_1 = require("./middleware/errorHandler");
 const rateLimiter_1 = require("./middleware/rateLimiter");
@@ -32,6 +33,9 @@ function createApp() {
     app.use(express_1.default.urlencoded({ extended: false }));
     if (!env_1.isProd)
         app.use((0, morgan_1.default)('dev'));
+    // Health probe FIRST, before the rate limiter: uptime monitors and Render's
+    // own checks poll this path on their schedule and must never see a 429.
+    app.use(`${env_1.env.API_PREFIX}/health`, health_routes_1.default);
     app.use(env_1.env.API_PREFIX, rateLimiter_1.apiLimiter, routes_1.default);
     app.use(notFound_1.notFound);
     app.use(errorHandler_1.errorHandler);

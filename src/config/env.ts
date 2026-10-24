@@ -2,16 +2,62 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-function int(name: string, fallback: number): number {
+export function int(name: string, fallback: number): number {
   const raw = process.env[name];
   const parsed = raw === undefined || raw === '' ? NaN : Number(raw);
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function str(name: string, fallback = ''): string {
+export function str(name: string, fallback = ''): string {
   const raw = process.env[name];
   return raw === undefined || raw === '' ? fallback : String(raw).trim();
 }
+
+/**
+ * Boolean env flag. Accepted truthy values: true/1/yes (case-insensitive).
+ * Anything else — including an empty/unset value — resolves to the fallback,
+ * so a typo can only ever disable a feature, never silently enable one.
+ */
+export function bool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const normalized = String(raw).trim().toLowerCase();
+  if (['true', '1', 'yes'].includes(normalized)) return true;
+  if (['false', '0', 'no'].includes(normalized)) return false;
+  warnEnv(`[env] ${name}="${raw}" is not a boolean (use true/false) — using default ${fallback}`);
+  return fallback;
+}
+
+/**
+ * Integer env value clamped to [min, max]. Non-numeric or out-of-range input
+ * logs a warning (never the value of any secret — only the variable name) and
+ * falls back to the default, so a bad value can never crash the scheduler.
+ */
+export function intClamped(name: string, fallback: number, min: number, max: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    warnEnv(`[env] ${name} is not a number — using default ${fallback}`);
+    return fallback;
+  }
+  if (parsed < min || parsed > max) {
+    const clamped = Math.min(Math.max(parsed, min), max);
+    warnEnv(`[env] ${name}=${parsed} out of range [${min}, ${max}] — using ${clamped}`);
+    return clamped;
+  }
+  return parsed;
+}
+
+let warned = false;
+function warnEnv(message: string): void {
+  // eslint-disable-next-line no-console
+  console.warn(message);
+  warned = true;
+}
+
+/** True when at least one env value had to be corrected at load time. */
+export const envHadWarnings = (): boolean => warned;
 
 export const env = {
   NODE_ENV: str('NODE_ENV', 'development'),
@@ -45,6 +91,42 @@ export const env = {
   CACHE_TTL_LIST: int('CACHE_TTL_LIST', 60),
   /** When 'false' the public registration endpoint refuses new sign-ups. */
   ALLOW_REGISTRATION: process.env.ALLOW_REGISTRATION !== 'false',
+
+  // ── Scheduled jobs ────────────────────────────────────────────────────────
+  /**
+   * Standard 5-field cron expression for the daily maintenance job
+   * (retention archiving + subscription-expiry notification refresh).
+   * Validated by node-cron at startup; an invalid value logs an error and
+   * the job stays disabled instead of crashing the process.
+   */
+  MAINTENANCE_CRON: str('MAINTENANCE_CRON', '0 0 * * *'),
+  /**
+   * Master switch for the retention (archive-then-remove) half of the
+   * maintenance job. Default true = preserves the pre-existing behaviour of
+   * running retention once per day. Set 'false' to run retention only
+   * manually via POST /api/admin/retention/run — the scheduled job will then
+   * only refresh subscription notifications (read/create-notify, no deletes).
+   */
+  RETENTION_SCHEDULED_ENABLED: bool('RETENTION_SCHEDULED_ENABLED', true),
+
+  // ── Keep-alive ping (optional) ───────────────────────────────────────────
+  /**
+   * When true, the server pings KEEP_ALIVE_URL every
+   * KEEP_ALIVE_INTERVAL_MINUTES while it is running. Disabled by default and
+   * never populated with a production URL — set the URL per environment
+   * (locally or on Render) after the service has a public address.
+   */
+  KEEP_ALIVE_ENABLED: bool('KEEP_ALIVE_ENABLED', false),
+  /** Absolute http(s) URL to ping. Empty = keep-alive stays off even if enabled. */
+  KEEP_ALIVE_URL: str('KEEP_ALIVE_URL', ''),
+  /**
+   * Minutes between pings. Clamped to [1, 1440]. Note: Render's free tier
+   * suspends instances after ~15 min without *external* HTTP traffic; an
+   * internal ping cannot wake a suspended instance (see RENDER_DEPLOYMENT.md).
+   */
+  KEEP_ALIVE_INTERVAL_MINUTES: intClamped('KEEP_ALIVE_INTERVAL_MINUTES', 10, 1, 1440),
+  /** Per-request timeout in ms for the keep-alive ping. Clamped to [1000, 60000]. */
+  KEEP_ALIVE_TIMEOUT_MS: intClamped('KEEP_ALIVE_TIMEOUT_MS', 10000, 1000, 60000),
 };
 
 export const isProd = env.NODE_ENV === 'production';
