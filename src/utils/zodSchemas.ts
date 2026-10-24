@@ -110,6 +110,9 @@ export const reportQuerySchema = z.object({
   date: z.string().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
+  // `download=true` makes the controller return text/csv instead of JSON —
+  // it must be declared here because zod strips unknown query keys.
+  download: z.string().optional(),
 });
 
 export const adminStatusSchema = z.object({

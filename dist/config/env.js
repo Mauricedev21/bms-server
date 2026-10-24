@@ -33,6 +33,14 @@ exports.env = {
     ACCOUNT_PERIOD_DAYS: int('ACCOUNT_PERIOD_DAYS', 30),
     NOTIFICATION_EXPIRY_DAYS: int('NOTIFICATION_EXPIRY_DAYS', 7),
     RETENTION_MONTHS: int('RETENTION_MONTHS', 6),
+    /**
+     * Storage quota in MB used by the admin dashboard's database-usage widget.
+     * Default 512 MB matches the MongoDB Atlas free tier — override it on
+     * Render to match your actual Atlas plan (e.g. 1024, 10240). Set to 0 to
+     * disable the configured quota (falls back to the database's own
+     * filesystem stats when available).
+     */
+    DB_STORAGE_LIMIT_MB: int('DB_STORAGE_LIMIT_MB', 512),
     CACHE_TTL_USER: int('CACHE_TTL_USER', 120),
     CACHE_TTL_SALON: int('CACHE_TTL_SALON', 120),
     CACHE_TTL_DASHBOARD: int('CACHE_TTL_DASHBOARD', 60),

@@ -17,7 +17,11 @@ const router = (0, express_1.Router)();
 router.get('/health', (_req, res) => res.json({ success: true, data: { status: 'ok', service: 'bms-api', time: new Date().toISOString() } }));
 router.use('/auth', auth_routes_1.default);
 router.use('/portal', barberPortal_routes_1.default);
+// userRoutes is mounted at the root (legacy paths used by the e2e script:
+// /dashboard, /notifications, /profile, /salon) AND under /user (the paths
+// the frontend calls: /user/dashboard, /user/notifications, …).
 router.use(user_routes_1.default);
+router.use('/user', user_routes_1.default);
 router.use('/barbers', barbers_routes_1.default);
 router.use('/transactions', transactions_routes_1.default);
 router.use('/loans', loans_routes_1.default);

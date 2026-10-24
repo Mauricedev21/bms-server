@@ -45,6 +45,9 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     throw AppError.conflict(`An account already exists with this ${field}.`, { field });
   }
 
+  // Access requests are created in a 'pending' state. A salon is only created
+  // (and the account activated) once an administrator approves the request, so
+  // no credentials, session token or salon are exposed before review.
   const user = await User.create({
     username,
     fullName,
@@ -52,50 +55,46 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
     email,
     passwordHash: password,
     role: 'manager',
-    status: 'active',
+    status: 'pending',
+    requestedSalonName: salonName,
   });
-
-  const salon = await Salon.create({
-    owner: user._id,
-    name: salonName,
-    managerSharePercent: env.MANAGER_SHARE_PERCENT,
-    barberSharePercent: env.BARBER_SHARE_PERCENT,
-    currency: env.CURRENCY,
-    status: 'active',
-  });
-
-  user.salon = salon._id;
-  await user.save();
 
   auditTrail(null, {
-    action: 'auth.register',
+    action: 'auth.access_requested',
     entity: 'User',
     entityId: user._id,
-    salon: String(salon._id),
-    after: { username, salonName },
+    after: { username, fullName, email, phone, requestedSalonName: salonName },
     meta: { actorRole: 'system' },
   });
 
-  // Notify all admins of the new registration.
-  const admins = await User.find({ role: 'admin' }).select('_id').lean();
-  for (const a of admins) {
-    await Notification.create({
-      user: a._id,
-      type: 'new_registration',
-      title: 'New salon registered',
-      message: `"${salonName}" registered by ${username} (${phone}).`,
-      data: { userId: String(user._id), salonId: String(salon._id), username, phone },
-    });
+  // Notify all admins so the request shows up in the Admin Panel as Pending.
+  // Notification failures must never fail the registration itself.
+  try {
+    const admins = await User.find({ role: 'admin' }).select('_id').lean();
+    for (const a of admins) {
+      await Notification.create({
+        user: a._id,
+        type: 'access_request',
+        title: 'New access request',
+        message: `${fullName || username} requested access for the salon "${salonName}".`,
+        data: { userId: String(user._id), username, fullName, email, phone, salonName },
+      });
+    }
+  } catch (err) {
+    console.warn('[register] admin notification failed', (err as Error).message);
   }
-
-  const token = signToken({ uid: String(user._id), role: 'manager', salon: String(salon._id) });
 
   res.status(201).json({
     success: true,
     data: {
-      token,
-      user: publicUser(user.toObject()),
-      salon: { _id: salon._id, name: salon.name, managerSharePercent: salon.managerSharePercent, barberSharePercent: salon.barberSharePercent, currency: salon.currency },
+      request: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        status: user.status,
+        requestedSalonName: salonName,
+        createdAt: user.createdAt,
+      },
     },
   });
 });
@@ -116,6 +115,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
   clearLoginAttempts(normalized);
 
+  if (user.status === 'pending') throw AppError.forbidden('Your account is pending approval. Please wait for an administrator to activate it.');
+  if (user.status === 'rejected') throw AppError.forbidden('Your access request was not approved. Contact support for more information.');
   if (user.status === 'suspended') throw AppError.forbidden('This account has been suspended. Contact support.');
   if (user.status === 'expired') throw AppError.forbidden('Subscription expired. Contact support to renew.');
 
@@ -186,5 +187,26 @@ export const changePassword = asyncHandler(async (req, res) => {
   await user.save();
   await cache.del(cacheKeys.user(uid));
   auditTrail(req, { action: 'auth.password_changed', entity: 'User', entityId: uid });
+
+  // Notify every administrator that a password changed — never include the
+  // password itself or any other authentication secret. Failures here must
+  // not undo the already-saved password change.
+  if (user.role === 'manager') {
+    try {
+      const admins = await User.find({ role: 'admin' }).select('_id').lean();
+      for (const a of admins) {
+        await Notification.create({
+          user: a._id,
+          type: 'security',
+          title: 'Password changed',
+          message: `Manager ${user.fullName || user.username} changed their account password. No credentials are shared with this notification.`,
+          data: { userId: uid, username: user.username },
+        });
+      }
+    } catch (err) {
+      console.warn('[changePassword] admin notification failed', (err as Error).message);
+    }
+  }
+
   res.json({ success: true, data: { message: 'Password updated successfully.' } });
 });

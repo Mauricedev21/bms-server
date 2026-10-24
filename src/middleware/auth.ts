@@ -72,6 +72,8 @@ export const protect = asyncHandler(async (req, res, next) => {
 
   const user = await loadUser(payload.uid);
   if (!user) throw AppError.unauthorized('User account no longer exists');
+  if (user.status === 'pending') throw AppError.forbidden('Your account is pending approval. Please wait for an administrator to activate it.');
+  if (user.status === 'rejected') throw AppError.forbidden('Your access request was not approved. Contact support for more information.');
   if (user.status === 'suspended') throw AppError.forbidden('This account has been suspended');
   if (user.status === 'expired') throw AppError.forbidden('Subscription expired. Please contact support to renew.');
 

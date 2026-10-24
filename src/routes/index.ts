@@ -15,7 +15,11 @@ router.get('/health', (_req, res) => res.json({ success: true, data: { status: '
 
 router.use('/auth', authRoutes);
 router.use('/portal', barberPortalRoutes);
+// userRoutes is mounted at the root (legacy paths used by the e2e script:
+// /dashboard, /notifications, /profile, /salon) AND under /user (the paths
+// the frontend calls: /user/dashboard, /user/notifications, …).
 router.use(userRoutes);
+router.use('/user', userRoutes);
 router.use('/barbers', barberRoutes);
 router.use('/transactions', transactionRoutes);
 router.use('/loans', loanRoutes);

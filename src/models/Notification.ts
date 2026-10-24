@@ -11,6 +11,8 @@ const notificationSchema = new Schema(
         'account_activated',
         'account_deactivated',
         'new_registration',
+        'access_request',
+        'security',
         'system',
         'loan',
         'transaction',

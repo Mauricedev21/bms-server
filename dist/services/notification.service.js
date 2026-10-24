@@ -55,7 +55,7 @@ async function ensureSubscriptionNotification(userId) {
 }
 /** Refresh account-status notifications for every manager. */
 async function refreshAllSubscriptionNotifications() {
-    const managers = await User_1.User.find({ role: 'manager' }).select('_id').lean();
+    const managers = await User_1.User.find({ role: 'manager', status: { $ne: 'pending' } }).select('_id').lean();
     for (const m of managers) {
         await ensureSubscriptionNotification(String(m._id));
     }

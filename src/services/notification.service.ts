@@ -64,7 +64,7 @@ export async function ensureSubscriptionNotification(userId: string): Promise<vo
 
 /** Refresh account-status notifications for every manager. */
 export async function refreshAllSubscriptionNotifications(): Promise<number> {
-  const managers = await User.find({ role: 'manager' }).select('_id').lean();
+  const managers = await User.find({ role: 'manager', status: { $ne: 'pending' } }).select('_id').lean();
   for (const m of managers) {
     await ensureSubscriptionNotification(String(m._id));
   }

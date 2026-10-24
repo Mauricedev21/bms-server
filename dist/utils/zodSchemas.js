@@ -97,6 +97,9 @@ exports.reportQuerySchema = zod_1.z.object({
     date: zod_1.z.string().optional(),
     startDate: zod_1.z.string().optional(),
     endDate: zod_1.z.string().optional(),
+    // `download=true` makes the controller return text/csv instead of JSON —
+    // it must be declared here because zod strips unknown query keys.
+    download: zod_1.z.string().optional(),
 });
 exports.adminStatusSchema = zod_1.z.object({
     status: zod_1.z.enum(['active', 'suspended', 'expired']),

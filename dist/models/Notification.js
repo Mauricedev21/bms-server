@@ -45,6 +45,8 @@ const notificationSchema = new mongoose_1.Schema({
             'account_activated',
             'account_deactivated',
             'new_registration',
+            'access_request',
+            'security',
             'system',
             'loan',
             'transaction',
