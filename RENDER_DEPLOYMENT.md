@@ -11,7 +11,7 @@ Placeholders look like `<this>` — replace them; never commit real credentials.
 - A **MongoDB Atlas** cluster (Render's free tier has no databases — use Atlas
   free tier: `mongodb+srv://…`).
 - The repo pushed to GitHub/GitLab (Render connects to it).
-- The frontend (Vercel) URL, e.g. `https://barbermanager.vercel.app`, so the
+- The frontend (Vercel) URL, e.g. `https://salon-pro-manager.vercel.app`, so the
   API can allow it via CORS.
 
 > Node requirement: **Node 20 or newer** (the scheduler uses node-cron 4.x).
@@ -56,7 +56,7 @@ documents the same set for local use).
 | `NODE_ENV`     | `production`                                                     |
 | `MONGODB_URI`  | your Atlas connection string, e.g. `mongodb+srv://user:pass@cluster.mongodb.net/bms?retryWrites=true&w=majority` |
 | `JWT_SECRET`   | a long random string (e.g. `openssl rand -hex 32`) — the server **refuses to boot** in production without it |
-| `CLIENT_ORIGIN`| `https://barbermanager.vercel.app` (comma-separated if several)  |
+| `CLIENT_ORIGIN`| `https://salon-pro-manager.vercel.app` (comma-separated if several)  |
 
 **Recommended**
 
