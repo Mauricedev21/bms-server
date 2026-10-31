@@ -11,8 +11,7 @@ export function validate(schemas: { params?: ZodSchema; query?: ZodSchema; body?
   return (req, _res, next) => {
     try {
       if (schemas.params) req.params = schemas.params.parse(req.params) as typeof req.params;
-      // @ts-ignore
-if (schemas.query) req.query = schemas.query.parse(req.query);
+      if (schemas.query) req.query = schemas.query.parse(req.query) as typeof req.query;
       if (schemas.body) req.body = schemas.body.parse(req.body);
       next();
     } catch (err) {
